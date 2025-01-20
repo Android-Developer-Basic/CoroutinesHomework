@@ -6,6 +6,8 @@ import android.view.View
 import android.view.ViewGroup
 import androidx.fragment.app.Fragment
 import androidx.lifecycle.lifecycleScope
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.isActive
@@ -33,6 +35,8 @@ class TimerFragment : Fragment() {
             stopTimer()
         }
     }
+
+    private var timerJob: Job? = null
 
     private fun setButtonsState(started: Boolean) {
         with(binding) {
@@ -75,15 +79,22 @@ class TimerFragment : Fragment() {
     }
 
     private fun startTimer() {
-        // TODO: Start timer
+        timerJob = CoroutineScope(Dispatchers.Main).launch {
+            while (isActive) {
+                delay(10L)
+                time += 10.milliseconds
+            }
+        }
     }
 
     private fun stopTimer() {
-        // TODO: Stop timer
+        timerJob?.cancel()
+        timerJob = null
     }
 
     override fun onDestroyView() {
         super.onDestroyView()
+        stopTimer()
         _binding = null
     }
 
@@ -91,12 +102,12 @@ class TimerFragment : Fragment() {
         private const val TIME = "time"
         private const val STARTED = "started"
 
-        private fun Duration.toDisplayString(): String = String.format(
-            Locale.getDefault(),
-            "%02d:%02d.%03d",
-            this.inWholeMinutes.toInt(),
-            this.inWholeSeconds.toInt(),
-            this.inWholeMilliseconds.toInt()
-        )
+        private fun Duration.toDisplayString(): String {
+            val totalMillis = inWholeMilliseconds
+            val minutes = totalMillis / 60000 % 60
+            val seconds = totalMillis / 1000 % 60
+            val millis = totalMillis % 1000
+            return String.format(Locale.getDefault(), "%02d:%02d.%03d", minutes, seconds, millis)
+        }
     }
 }
