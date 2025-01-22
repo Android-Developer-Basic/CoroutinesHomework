@@ -7,21 +7,12 @@ import android.view.ViewGroup
 import androidx.fragment.app.Fragment
 import androidx.fragment.app.viewModels
 import androidx.lifecycle.Lifecycle
-import androidx.lifecycle.ViewModel
 import androidx.lifecycle.lifecycleScope
 import androidx.lifecycle.repeatOnLifecycle
-import androidx.lifecycle.viewModelScope
-import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.Job
-import kotlinx.coroutines.delay
-import kotlinx.coroutines.flow.MutableStateFlow
-import kotlinx.coroutines.flow.StateFlow
-import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
 import ru.otus.coroutineshomework.databinding.FragmentTimerBinding
 import java.util.Locale
 import kotlin.time.Duration
-import kotlin.time.Duration.Companion.milliseconds
 
 class TimerFragment : Fragment() {
 
@@ -38,7 +29,7 @@ class TimerFragment : Fragment() {
     override fun onCreateView(
         inflater: LayoutInflater,
         container: ViewGroup?,
-        savedInstanceState: Bundle?
+        savedInstanceState: Bundle?,
     ): View {
         _binding = FragmentTimerBinding.inflate(inflater, container, false)
         return binding.root
@@ -49,7 +40,7 @@ class TimerFragment : Fragment() {
 
         viewLifecycleOwner.lifecycleScope.launch {
             viewLifecycleOwner.repeatOnLifecycle(Lifecycle.State.STARTED) {
-                viewModel.timeFlow.collect{duration ->
+                viewModel.timeFlow.collect { duration ->
                     binding.time.text = duration.toDisplayString()
                 }
             }
@@ -80,35 +71,3 @@ class TimerFragment : Fragment() {
     }
 }
 
-class TimerViewModel : ViewModel() {
-
-    private val _timeFlow = MutableStateFlow(Duration.ZERO)
-    val timeFlow: StateFlow<Duration> = _timeFlow
-
-    private var running = false
-    private var timerJob: Job? = null
-
-    fun startTimer() {
-        if (!running) {
-            running = true
-            timerJob = viewModelScope.launch(Dispatchers.Default) {
-                while (running && isActive) {
-                    delay(50L)
-                    _timeFlow.emit(_timeFlow.value + 50.milliseconds)
-                }
-            }
-        }
-    }
-
-    fun stopTimer() {
-        running = false
-        timerJob?.cancel()
-        timerJob = null
-        _timeFlow.value = Duration.ZERO
-    }
-
-    override fun onCleared() {
-        super.onCleared()
-        stopTimer()
-    }
-}
