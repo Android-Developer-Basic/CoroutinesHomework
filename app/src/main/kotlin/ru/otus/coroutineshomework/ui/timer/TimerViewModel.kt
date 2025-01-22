@@ -23,7 +23,7 @@ class TimerViewModel : ViewModel() {
     fun startTimer() {
         if (!running) {
             running = true
-            timerJob = viewModelScope.launch(Dispatchers.Default) {
+            timerJob = viewModelScope.launch {
                 while (running && isActive) {
                     delay(50L)
                     _timeFlow.emit(_timeFlow.value + 50.milliseconds)
