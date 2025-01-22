@@ -4,8 +4,11 @@ import android.util.Log
 import androidx.lifecycle.LiveData
 import androidx.lifecycle.MutableLiveData
 import androidx.lifecycle.ViewModel
+import androidx.lifecycle.viewModelScope
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.async
 import kotlinx.coroutines.isActive
+import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import kotlin.random.Random
 
@@ -18,7 +21,26 @@ class NetworkViewModel : ViewModel() {
     val result: LiveData<Long?> = _result
 
     fun startTest(numberOfThreads: Int) {
-        // TODO: Implement the logic
+        _running.value = true
+
+        viewModelScope.launch(Dispatchers.Default) {
+            val results = mutableListOf<ResultNetwork<Long>>()
+
+            repeat(numberOfThreads) {
+                val result = async {
+                    emulateBlockingNetworkRequest()
+                }
+                results.add(result.await())
+            }
+
+            val successfulResults = results.filterIsInstance<ResultNetwork.Success<Long>>()
+            val averageTime = successfulResults.map { it.value }.average().toLong()
+
+            withContext(Dispatchers.Main) {
+                _result.value = averageTime
+                _running.value = false
+            }
+        }
     }
 
     private companion object {
@@ -26,20 +48,20 @@ class NetworkViewModel : ViewModel() {
         private const val MIN_DELAY = 1000L
         private const val MAX_DELAY = 5000L
 
-        suspend fun emulateBlockingNetworkRequest(): Result<Long> = withContext(Dispatchers.IO) {
+        suspend fun emulateBlockingNetworkRequest(): ResultNetwork<Long> = withContext(Dispatchers.IO) {
             val delay = Random.nextLong(MIN_DELAY, MAX_DELAY)
             var progress = 0L
             while (isActive && progress < delay) {
                 if (5 == Random.nextInt(1, 20)) {
                     log("emulateBlockingNetworkRequest: Network request failed")
-                    return@withContext Result.failure(Exception("Network request failed"))
+                    return@withContext ResultNetwork.Failure(Exception("Network request failed"))
                 }
                 log("emulateBlockingNetworkRequest: progress = $progress, delay = $delay")
                 Thread.sleep(100)
                 progress += 100
             }
             log("emulateBlockingNetworkRequest: Network request completed")
-            return@withContext Result.success(delay)
+            return@withContext ResultNetwork.Success(delay)
         }
 
         private fun log(message: String) {
@@ -47,4 +69,3 @@ class NetworkViewModel : ViewModel() {
         }
     }
 }
-
