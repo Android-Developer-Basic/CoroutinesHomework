@@ -1,10 +1,10 @@
 package ru.otus.coroutineshomework.ui.login
 
-import androidx.lifecycle.LiveData
-import androidx.lifecycle.MutableLiveData
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import ru.otus.coroutineshomework.ui.login.data.Credentials
@@ -12,8 +12,8 @@ import ru.otus.coroutineshomework.ui.login.data.Credentials
 class LoginViewModel : ViewModel() {
     private val loginApi = LoginApi()
 
-    private val _state = MutableLiveData<LoginViewState>(LoginViewState.Login())
-    val state: LiveData<LoginViewState> = _state
+    private val _state = MutableStateFlow<LoginViewState>(LoginViewState.Login())
+    val state: StateFlow<LoginViewState> = _state
 
     fun login(name: String, password: String) {
 
