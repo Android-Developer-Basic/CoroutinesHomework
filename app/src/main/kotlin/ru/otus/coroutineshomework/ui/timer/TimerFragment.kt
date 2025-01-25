@@ -8,7 +8,6 @@ import androidx.fragment.app.Fragment
 import androidx.lifecycle.lifecycleScope
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
-import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
 import ru.otus.coroutineshomework.databinding.FragmentTimerBinding
 import java.util.Locale
@@ -34,6 +33,8 @@ class TimerFragment : Fragment() {
         }
     }
 
+    private var timerJob: Job? = null
+
     private fun setButtonsState(started: Boolean) {
         with(binding) {
             btnStart.isEnabled = !started
@@ -44,7 +45,7 @@ class TimerFragment : Fragment() {
     override fun onCreateView(
         inflater: LayoutInflater,
         container: ViewGroup?,
-        savedInstanceState: Bundle?
+        savedInstanceState: Bundle?,
     ): View {
         _binding = FragmentTimerBinding.inflate(inflater, container, false)
         return binding.root
@@ -75,11 +76,16 @@ class TimerFragment : Fragment() {
     }
 
     private fun startTimer() {
-        // TODO: Start timer
+        timerJob = lifecycleScope.launch {
+            while (started) {
+                delay(2L)
+                time += 2.milliseconds
+            }
+        }
     }
 
     private fun stopTimer() {
-        // TODO: Stop timer
+        timerJob?.cancel()
     }
 
     override fun onDestroyView() {
