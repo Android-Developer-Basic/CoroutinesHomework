@@ -77,7 +77,6 @@ class TimerFragment : Fragment() {
 
     private fun startTimer() {
         timeTicker = Timer()
-
         timeTicker?.schedule(0L, 100L) {
             updateTime()
         }
