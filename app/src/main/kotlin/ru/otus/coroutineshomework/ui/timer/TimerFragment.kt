@@ -8,7 +8,6 @@ import androidx.fragment.app.Fragment
 import androidx.lifecycle.lifecycleScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow
-import kotlinx.coroutines.flow.collect
 import kotlinx.coroutines.launch
 import ru.otus.coroutineshomework.databinding.FragmentTimerBinding
 import java.util.Locale
@@ -89,9 +88,7 @@ class TimerFragment : Fragment() {
     }
 
     private fun updateTime() {
-        this.lifecycleScope.launch(Dispatchers.Main) {
-            timeFlow.value = timeFlow.value.plus(1.milliseconds)
-        }
+        timeFlow.value = timeFlow.value.plus(1.milliseconds)
     }
 
     private fun stopTimer() {
