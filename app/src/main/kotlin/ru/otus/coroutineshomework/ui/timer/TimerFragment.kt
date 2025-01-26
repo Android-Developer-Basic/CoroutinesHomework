@@ -6,12 +6,12 @@ import android.view.View
 import android.view.ViewGroup
 import androidx.fragment.app.Fragment
 import androidx.lifecycle.lifecycleScope
-import kotlinx.coroutines.Job
-import kotlinx.coroutines.delay
-import kotlinx.coroutines.isActive
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import ru.otus.coroutineshomework.databinding.FragmentTimerBinding
 import java.util.Locale
+import java.util.Timer
+import kotlin.concurrent.schedule
 import kotlin.properties.Delegates
 import kotlin.time.Duration
 import kotlin.time.Duration.Companion.milliseconds
@@ -33,6 +33,7 @@ class TimerFragment : Fragment() {
             stopTimer()
         }
     }
+    private var timeTicker: Timer? = null
 
     private fun setButtonsState(started: Boolean) {
         with(binding) {
@@ -75,11 +76,21 @@ class TimerFragment : Fragment() {
     }
 
     private fun startTimer() {
-        // TODO: Start timer
+        timeTicker = Timer()
+
+        timeTicker?.schedule(0L, 100L) {
+            updateTime()
+        }
+    }
+
+    private fun updateTime() {
+        this.lifecycleScope.launch(Dispatchers.Main) {
+            time = time.plus(1.milliseconds)
+        }
     }
 
     private fun stopTimer() {
-        // TODO: Stop timer
+        timeTicker?.cancel()
     }
 
     override fun onDestroyView() {
