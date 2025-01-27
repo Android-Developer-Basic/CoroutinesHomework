@@ -22,7 +22,7 @@ class TimerFragment : Fragment() {
     private var _binding: FragmentTimerBinding? = null
     private val binding get() = _binding!!
 
-    private var time: Duration by Delegates.observable(Duration.ZERO) { _, _, newValue ->
+    private var time: Duration by Delegates.observable(ZERO) { _, _, newValue ->
         binding.time.text = newValue.toDisplayString()
     }
 
