@@ -5,9 +5,16 @@ import androidx.lifecycle.LiveData
 import androidx.lifecycle.MutableLiveData
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Deferred
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.Job
+import kotlinx.coroutines.async
+import kotlinx.coroutines.awaitAll
 import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.runBlocking
+import kotlinx.coroutines.selects.SelectClause1
 import kotlinx.coroutines.withContext
 import kotlin.random.Random
 
@@ -20,25 +27,19 @@ class NetworkViewModel : ViewModel() {
     val result: LiveData<Long?> = _result
 
     fun startTest(numberOfThreads: Int) {
-        val results: MutableList<Long> = mutableListOf(0L)
-        _result.postValue(results.first())
+        _result.postValue(0L)
+        val deferredList = ArrayList<Deferred<Result<Long>>>()
 
         viewModelScope.launch {
             _running.postValue(true)
-            repeat(numberOfThreads) {
-                try {
-                    val timeTask = emulateBlockingNetworkRequest()
 
-                    timeTask.getOrNull()?.let {
-                        if (it > 0) {
-                            results.add(it)
-                        }
-                    }
-                } catch (_: Throwable) {
-                }
+            repeat(numberOfThreads) {
+                deferredList.add(async { emulateBlockingNetworkRequest() })
             }
+            val middleValue =
+                deferredList.awaitAll().mapNotNull { it.getOrNull() }.average().toLong()
+
             _running.postValue(false)
-            val middleValue = results.average().toLong()
             _result.postValue(middleValue)
         }
     }
