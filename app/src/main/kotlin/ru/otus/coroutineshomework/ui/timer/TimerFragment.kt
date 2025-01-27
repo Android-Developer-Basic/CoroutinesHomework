@@ -14,6 +14,7 @@ import ru.otus.coroutineshomework.databinding.FragmentTimerBinding
 import java.util.Locale
 import kotlin.properties.Delegates
 import kotlin.time.Duration
+import kotlin.time.Duration.Companion.ZERO
 import kotlin.time.Duration.Companion.milliseconds
 
 class TimerFragment : Fragment() {
@@ -33,6 +34,8 @@ class TimerFragment : Fragment() {
             stopTimer()
         }
     }
+
+    private var timerJob: Job? = null
 
     private fun setButtonsState(started: Boolean) {
         with(binding) {
@@ -75,11 +78,20 @@ class TimerFragment : Fragment() {
     }
 
     private fun startTimer() {
-        // TODO: Start timer
+        timerJob?.cancel() // Остановить предыдущую корутину, если она запущена
+
+        timerJob = viewLifecycleOwner.lifecycleScope.launch {
+            time = ZERO
+            while (isActive) { // Проверяем, что корутина активна
+                delay(10) // Интервал обновления (например, 10 миллисекунд)
+                time += 10.milliseconds // Увеличиваем значение времени
+            }
+        }
     }
 
     private fun stopTimer() {
-        // TODO: Stop timer
+        timerJob?.cancel() // Останавливаем корутину
+        timerJob = null
     }
 
     override fun onDestroyView() {
