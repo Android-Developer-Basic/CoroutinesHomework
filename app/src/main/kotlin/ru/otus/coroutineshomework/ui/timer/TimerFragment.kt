@@ -94,7 +94,7 @@ class TimerFragment : Fragment() {
         var currentTime = time
         timerJob = viewLifecycleOwner.lifecycleScope.launch {
             while (isActive) { // Проверяем, что корутина активна
-                val delta = 10L;
+                val delta = 10L
                 delay(delta) // Интервал обновления (например, 10 миллисекунд)
                 currentTime += delta.milliseconds
                 timeFlow.emit(currentTime) // Обновляем значение через emit
