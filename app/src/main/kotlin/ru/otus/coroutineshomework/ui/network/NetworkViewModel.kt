@@ -4,8 +4,17 @@ import android.util.Log
 import androidx.lifecycle.LiveData
 import androidx.lifecycle.MutableLiveData
 import androidx.lifecycle.ViewModel
+import androidx.lifecycle.viewModelScope
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Deferred
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.Job
+import kotlinx.coroutines.async
+import kotlinx.coroutines.awaitAll
 import kotlinx.coroutines.isActive
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.runBlocking
+import kotlinx.coroutines.selects.SelectClause1
 import kotlinx.coroutines.withContext
 import kotlin.random.Random
 
@@ -18,7 +27,21 @@ class NetworkViewModel : ViewModel() {
     val result: LiveData<Long?> = _result
 
     fun startTest(numberOfThreads: Int) {
-        // TODO: Implement the logic
+        _result.postValue(0L)
+        val deferredList = ArrayList<Deferred<Result<Long>>>()
+
+        viewModelScope.launch {
+            _running.postValue(true)
+
+            repeat(numberOfThreads) {
+                deferredList.add(async { emulateBlockingNetworkRequest() })
+            }
+            val middleValue =
+                deferredList.awaitAll().mapNotNull { it.getOrNull() }.average().toLong()
+
+            _running.postValue(false)
+            _result.postValue(middleValue)
+        }
     }
 
     private companion object {
