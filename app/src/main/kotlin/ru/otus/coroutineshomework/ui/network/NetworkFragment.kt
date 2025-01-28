@@ -36,7 +36,7 @@ class NetworkFragment : Fragment() {
         }
 
         networkViewModel.result.observe(viewLifecycleOwner) { result ->
-            binding.result.text = result?.let { getString(R.string.result, it.toFloat() / 1000) } ?: ""
+            binding.result.text = result?.let { getString(R.string.result, it.toFloat() / 1000) } ?: "no successful connections"
         }
 
         binding.numOfThreads.setText(

@@ -4,8 +4,12 @@ import android.util.Log
 import androidx.lifecycle.LiveData
 import androidx.lifecycle.MutableLiveData
 import androidx.lifecycle.ViewModel
+import androidx.lifecycle.viewModelScope
+import kotlinx.coroutines.Deferred
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.async
 import kotlinx.coroutines.isActive
+import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import kotlin.random.Random
 
@@ -18,7 +22,38 @@ class NetworkViewModel : ViewModel() {
     val result: LiveData<Long?> = _result
 
     fun startTest(numberOfThreads: Int) {
-        // TODO: Implement the logic
+        viewModelScope.launch {
+            _running.value = true  // Устанавливаем индикатор загрузки в true
+
+            val results = mutableListOf<Long>()
+            val jobs = mutableListOf<Deferred<Result<Long>>>()
+
+            // Запускаем несколько корутин
+            repeat(numberOfThreads) {
+                val job = async {
+                    emulateBlockingNetworkRequest()
+                }
+                jobs.add(job)
+            }
+
+            // Собираем результаты
+            jobs.forEach { job ->
+                val result = job.await()
+                result.onSuccess {
+                    results.add(it) // Добавляем время успешных запросов
+                }
+            }
+
+            // Если есть успешные результаты, вычисляем их среднее время
+            if (results.isNotEmpty()) {
+                val averageTime = results.average().toLong()
+                _result.value = averageTime
+            } else {
+                _result.value = null // Если нет успешных запросов
+            }
+
+            _running.value = false  // Останавливаем индикатор загрузки
+        }
     }
 
     private companion object {
