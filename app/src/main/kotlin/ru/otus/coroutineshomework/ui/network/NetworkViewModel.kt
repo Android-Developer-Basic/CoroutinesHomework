@@ -8,6 +8,10 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.isActive
 import kotlinx.coroutines.withContext
 import kotlin.random.Random
+import androidx.lifecycle.viewModelScope
+import kotlinx.coroutines.Deferred
+import kotlinx.coroutines.async
+import kotlinx.coroutines.launch
 
 class NetworkViewModel : ViewModel() {
 
@@ -18,7 +22,28 @@ class NetworkViewModel : ViewModel() {
     val result: LiveData<Long?> = _result
 
     fun startTest(numberOfThreads: Int) {
-        // TODO: Implement the logic
+        viewModelScope.launch {
+            _running.value = true
+
+            val ranJobs = mutableListOf<Deferred<Result<Long>>>()
+
+            repeat(numberOfThreads) {
+                val job = async {
+                    emulateBlockingNetworkRequest()
+                }
+                ranJobs.add(job)
+            }
+
+            val results = ranJobs.mapNotNull { it.await().getOrNull() }
+
+            if (results.isNotEmpty()) {
+                val averageTime = results.average().toLong()
+                _result.value = averageTime
+            } else {
+                _result.value = null
+            }
+            _running.value = false
+        }
     }
 
     private companion object {
