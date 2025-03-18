@@ -99,6 +99,8 @@ class LoginFragment : Fragment() {
         login.loginGroup.isVisible = false
         content.contentGroup.isVisible = false
         loading.loadingGroup.isVisible = true
+        login.login.text?.clear()
+        login.password.text?.clear()
     }
 
     private fun setupContent() {
