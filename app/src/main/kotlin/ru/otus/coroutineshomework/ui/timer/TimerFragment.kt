@@ -8,7 +8,11 @@ import androidx.fragment.app.Fragment
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
+import kotlinx.coroutines.currentCoroutineContext
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.flow
+import kotlinx.coroutines.flow.onEach
 import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
 import ru.otus.coroutineshomework.databinding.FragmentTimerBinding
@@ -24,10 +28,15 @@ class TimerFragment : Fragment() {
 
     private var _binding: FragmentTimerBinding? = null
     private val binding get() = _binding!!
-    private var timerJob: Job? = null
 
-    private var time: Duration by Delegates.observable(Duration.ZERO) { _, _, newValue ->
-        binding.time.text = newValue.toDisplayString()
+    private var timerJob: Job? = null
+    private var time: Duration = Duration.ZERO
+    private val timeFlow: Flow<Duration> = flow {
+        while (currentCoroutineContext().isActive) {
+            time = time.plus(1L.toDuration(DurationUnit.MILLISECONDS))
+            emit(time)
+            delay(1)
+        }
     }
 
     private var started by Delegates.observable(false) { _, _, newValue ->
@@ -63,7 +72,7 @@ class TimerFragment : Fragment() {
         }
         setButtonsState(started)
         with(binding) {
-            time.text = this@TimerFragment.time.toDisplayString()
+            time.text = this.time.toDisplayString()
             btnStart.setOnClickListener {
                 started = true
             }
@@ -80,16 +89,12 @@ class TimerFragment : Fragment() {
     }
 
     private fun startTimer() {
-        val diff = 1L.toDuration(DurationUnit.MILLISECONDS)
-
         timerJob = CoroutineScope(Dispatchers.Default).launch {
-            while (isActive) {
+            timeFlow.onEach {
                 CoroutineScope(Dispatchers.Main).launch {
-                    time = time.plus(diff)
+                    binding.time.text = it.toDisplayString()
                 }
-
-                delay(1L)
-            }
+            }.collect {  }
         }
     }
 
