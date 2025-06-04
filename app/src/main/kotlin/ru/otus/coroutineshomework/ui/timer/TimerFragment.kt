@@ -5,21 +5,26 @@ import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
 import androidx.fragment.app.Fragment
-import androidx.lifecycle.lifecycleScope
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
 import ru.otus.coroutineshomework.databinding.FragmentTimerBinding
+import java.time.LocalDateTime
 import java.util.Locale
 import kotlin.properties.Delegates
 import kotlin.time.Duration
 import kotlin.time.Duration.Companion.milliseconds
+import kotlin.time.DurationUnit
+import kotlin.time.toDuration
 
 class TimerFragment : Fragment() {
 
     private var _binding: FragmentTimerBinding? = null
     private val binding get() = _binding!!
+    private var timerJob: Job? = null
 
     private var time: Duration by Delegates.observable(Duration.ZERO) { _, _, newValue ->
         binding.time.text = newValue.toDisplayString()
@@ -75,11 +80,21 @@ class TimerFragment : Fragment() {
     }
 
     private fun startTimer() {
-        // TODO: Start timer
+        val diff = 1L.toDuration(DurationUnit.MILLISECONDS)
+
+        timerJob = CoroutineScope(Dispatchers.Default).launch {
+            while (isActive) {
+                CoroutineScope(Dispatchers.Main).launch {
+                    time = time.plus(diff)
+                }
+
+                delay(1L)
+            }
+        }
     }
 
     private fun stopTimer() {
-        // TODO: Stop timer
+        timerJob?.cancel()
     }
 
     override fun onDestroyView() {
@@ -95,8 +110,8 @@ class TimerFragment : Fragment() {
             Locale.getDefault(),
             "%02d:%02d.%03d",
             this.inWholeMinutes.toInt(),
-            this.inWholeSeconds.toInt(),
-            this.inWholeMilliseconds.toInt()
+            this.inWholeSeconds.toInt() % 60,
+            this.inWholeMilliseconds.toInt() % 1000
         )
     }
 }
