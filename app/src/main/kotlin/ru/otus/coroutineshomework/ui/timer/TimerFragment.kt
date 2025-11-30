@@ -8,6 +8,7 @@ import androidx.fragment.app.Fragment
 import androidx.lifecycle.lifecycleScope
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
 import ru.otus.coroutineshomework.databinding.FragmentTimerBinding
@@ -18,6 +19,8 @@ import kotlin.time.Duration.Companion.milliseconds
 
 class TimerFragment : Fragment() {
 
+    private var timerJob: Job? = null
+    private val timeFlow = MutableStateFlow<Duration>(Duration.ZERO)
     private var _binding: FragmentTimerBinding? = null
     private val binding get() = _binding!!
 
@@ -53,12 +56,16 @@ class TimerFragment : Fragment() {
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         super.onViewCreated(view, savedInstanceState)
         savedInstanceState?.let {
-            time = it.getLong(TIME).milliseconds
+            timeFlow.value = it.getLong(TIME).milliseconds
             started = it.getBoolean(STARTED)
         }
         setButtonsState(started)
         with(binding) {
-            time.text = this@TimerFragment.time.toDisplayString()
+            lifecycleScope.launch {
+                timeFlow.collect {
+                    time.text = this@TimerFragment.timeFlow.value.toDisplayString()
+                }
+            }
             btnStart.setOnClickListener {
                 started = true
             }
@@ -70,16 +77,21 @@ class TimerFragment : Fragment() {
 
     override fun onSaveInstanceState(outState: Bundle) {
         super.onSaveInstanceState(outState)
-        outState.putLong(TIME, time.inWholeMilliseconds)
+        outState.putLong(TIME, timeFlow.value.inWholeMilliseconds)
         outState.putBoolean(STARTED, started)
     }
 
     private fun startTimer() {
-        // TODO: Start timer
+        timerJob = viewLifecycleOwner.lifecycleScope.launch {
+            while (true){
+                delay(10)
+                timeFlow.emit(timeFlow.value + 10.milliseconds)
+            }
+        }
     }
 
     private fun stopTimer() {
-        // TODO: Stop timer
+        timerJob?.cancel()
     }
 
     override fun onDestroyView() {
