@@ -4,8 +4,12 @@ import android.util.Log
 import androidx.lifecycle.LiveData
 import androidx.lifecycle.MutableLiveData
 import androidx.lifecycle.ViewModel
+import androidx.lifecycle.viewModelScope
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.async
+import kotlinx.coroutines.awaitAll
 import kotlinx.coroutines.isActive
+import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import kotlin.random.Random
 
@@ -19,6 +23,24 @@ class NetworkViewModel : ViewModel() {
 
     fun startTest(numberOfThreads: Int) {
         // TODO: Implement the logic
+        viewModelScope.launch {
+            _running.value = true
+            _result.value = null
+
+            val requests = (1..numberOfThreads).map {
+                async { emulateBlockingNetworkRequest() }
+            }
+            val results = requests.awaitAll()
+            val successResults = results.filter { it.isSuccess }
+
+            _result.value = if (successResults.isNotEmpty()) {
+                successResults.map { it.getOrNull() ?:0}.average().toLong()
+            } else {
+                null
+            }
+
+            _running.value = false
+        }
     }
 
     private companion object {
