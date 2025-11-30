@@ -18,6 +18,7 @@ import kotlin.time.Duration.Companion.milliseconds
 
 class TimerFragment : Fragment() {
 
+    private var timerJob: Job? = null
     private var _binding: FragmentTimerBinding? = null
     private val binding get() = _binding!!
 
@@ -75,11 +76,17 @@ class TimerFragment : Fragment() {
     }
 
     private fun startTimer() {
-        // TODO: Start timer
+
+        timerJob = viewLifecycleOwner.lifecycleScope.launch {
+            while (true){
+                delay(10)
+                time += 10.milliseconds
+            }
+        }
     }
 
     private fun stopTimer() {
-        // TODO: Stop timer
+        timerJob?.cancel()
     }
 
     override fun onDestroyView() {
