@@ -11,6 +11,8 @@ import ru.otus.coroutineshomework.databinding.ContentBinding
 import ru.otus.coroutineshomework.databinding.FragmentLoginBinding
 import ru.otus.coroutineshomework.databinding.LoadingBinding
 import ru.otus.coroutineshomework.databinding.LoginBinding
+import androidx.lifecycle.lifecycleScope
+import kotlinx.coroutines.launch
 
 class LoginFragment : Fragment() {
 
@@ -39,16 +41,17 @@ class LoginFragment : Fragment() {
 
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         super.onViewCreated(view, savedInstanceState)
-
         setupLogin()
         setupContent()
 
-        loginViewModel.state.observe(viewLifecycleOwner) {
-            when(it) {
-                is LoginViewState.Login -> showLogin(it)
-                LoginViewState.LoggingIn -> showLoggingIn()
-                is LoginViewState.Content -> showContent(it)
-                LoginViewState.LoggingOut -> showLoggingOut()
+        lifecycleScope.launch {
+            loginViewModel.stateFlow.collect { viewState ->
+                when (viewState) {
+                    is LoginViewState.Login -> showLogin(viewState)
+                    LoginViewState.LoggingIn -> showLoggingIn()
+                    is LoginViewState.Content -> showContent(viewState)
+                    LoginViewState.LoggingOut -> showLoggingOut()
+                }
             }
         }
     }
