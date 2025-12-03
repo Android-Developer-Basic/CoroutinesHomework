@@ -1,29 +1,33 @@
 package ru.otus.coroutineshomework.ui.timer
 
 import android.os.Bundle
+import android.util.Log
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
 import androidx.fragment.app.Fragment
+import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.lifecycleScope
-import kotlinx.coroutines.Job
-import kotlinx.coroutines.delay
-import kotlinx.coroutines.isActive
+import androidx.lifecycle.repeatOnLifecycle
+import dagger.hilt.android.AndroidEntryPoint
+import jakarta.inject.Inject
 import kotlinx.coroutines.launch
 import ru.otus.coroutineshomework.databinding.FragmentTimerBinding
 import java.util.Locale
 import kotlin.properties.Delegates
 import kotlin.time.Duration
-import kotlin.time.Duration.Companion.milliseconds
+import kotlin.time.Duration.Companion.minutes
+import kotlin.time.Duration.Companion.seconds
 
+@AndroidEntryPoint
 class TimerFragment : Fragment() {
 
     private var _binding: FragmentTimerBinding? = null
     private val binding get() = _binding!!
 
-    private var time: Duration by Delegates.observable(Duration.ZERO) { _, _, newValue ->
-        binding.time.text = newValue.toDisplayString()
-    }
+    @set:Inject
+    lateinit var timerUseCase: TimerUseCase
+
 
     private var started by Delegates.observable(false) { _, _, newValue ->
         setButtonsState(newValue)
@@ -53,12 +57,20 @@ class TimerFragment : Fragment() {
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         super.onViewCreated(view, savedInstanceState)
         savedInstanceState?.let {
-            time = it.getLong(TIME).milliseconds
             started = it.getBoolean(STARTED)
         }
         setButtonsState(started)
+
+        viewLifecycleOwner.lifecycleScope.launch {
+            repeatOnLifecycle(Lifecycle.State.STARTED) {
+                timerUseCase.timeFlow.collect { time ->
+                    Log.d("TimerFragment", "Time updated: ${time.toDisplayString()}")
+                    binding.time.text = time.toDisplayString()
+                }
+            }
+        }
+
         with(binding) {
-            time.text = this@TimerFragment.time.toDisplayString()
             btnStart.setOnClickListener {
                 started = true
             }
@@ -70,16 +82,15 @@ class TimerFragment : Fragment() {
 
     override fun onSaveInstanceState(outState: Bundle) {
         super.onSaveInstanceState(outState)
-        outState.putLong(TIME, time.inWholeMilliseconds)
         outState.putBoolean(STARTED, started)
     }
 
     private fun startTimer() {
-        // TODO: Start timer
+        timerUseCase.startTimer()
     }
 
     private fun stopTimer() {
-        // TODO: Stop timer
+        timerUseCase.stopTimer()
     }
 
     override fun onDestroyView() {
@@ -88,15 +99,16 @@ class TimerFragment : Fragment() {
     }
 
     companion object {
-        private const val TIME = "time"
         private const val STARTED = "started"
+        private val secondInMinute = 1.minutes.inWholeSeconds
+        private val millisecondInSecond = 1.seconds.inWholeMilliseconds
 
         private fun Duration.toDisplayString(): String = String.format(
             Locale.getDefault(),
             "%02d:%02d.%03d",
-            this.inWholeMinutes.toInt(),
-            this.inWholeSeconds.toInt(),
-            this.inWholeMilliseconds.toInt()
+            inWholeMinutes.toInt(),
+            (inWholeSeconds % secondInMinute).toInt(),
+            (inWholeMilliseconds % millisecondInSecond).toInt()
         )
     }
 }
