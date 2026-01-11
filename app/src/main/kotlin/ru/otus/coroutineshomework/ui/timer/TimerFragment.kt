@@ -5,9 +5,12 @@ import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
 import androidx.fragment.app.Fragment
+import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.lifecycleScope
+import androidx.lifecycle.repeatOnLifecycle
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
 import ru.otus.coroutineshomework.databinding.FragmentTimerBinding
@@ -25,6 +28,8 @@ class TimerFragment : Fragment() {
         binding.time.text = newValue.toDisplayString()
     }
 
+    private var timerTask: Job? = null
+    private var timerFlow = MutableStateFlow(Duration.ZERO)
     private var started by Delegates.observable(false) { _, _, newValue ->
         setButtonsState(newValue)
         if (newValue) {
@@ -53,12 +58,16 @@ class TimerFragment : Fragment() {
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         super.onViewCreated(view, savedInstanceState)
         savedInstanceState?.let {
-            time = it.getLong(TIME).milliseconds
+            timerFlow.value = it.getLong(TIME).milliseconds
             started = it.getBoolean(STARTED)
         }
         setButtonsState(started)
         with(binding) {
-            time.text = this@TimerFragment.time.toDisplayString()
+            lifecycleScope.launch {
+                viewLifecycleOwner.repeatOnLifecycle(Lifecycle.State.STARTED) {
+                    timerFlow.collect { value -> time.text = value.toDisplayString() }
+                }
+            }
             btnStart.setOnClickListener {
                 started = true
             }
@@ -70,16 +79,21 @@ class TimerFragment : Fragment() {
 
     override fun onSaveInstanceState(outState: Bundle) {
         super.onSaveInstanceState(outState)
-        outState.putLong(TIME, time.inWholeMilliseconds)
+        outState.putLong(TIME, timerFlow.value.inWholeMilliseconds)
         outState.putBoolean(STARTED, started)
     }
 
     private fun startTimer() {
-        // TODO: Start timer
+        timerTask = viewLifecycleOwner.lifecycleScope.launch {
+            while (isActive) {
+                delay(10)
+                timerFlow.emit(timerFlow.value + 10.milliseconds)
+            }
+        }
     }
 
     private fun stopTimer() {
-        // TODO: Stop timer
+        timerTask?.cancel()
     }
 
     override fun onDestroyView() {

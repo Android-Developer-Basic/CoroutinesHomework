@@ -7,6 +7,11 @@ import android.view.ViewGroup
 import androidx.core.view.isVisible
 import androidx.fragment.app.Fragment
 import androidx.fragment.app.viewModels
+import androidx.lifecycle.Lifecycle
+//import androidx.lifecycle.LiveData
+import androidx.lifecycle.lifecycleScope
+import androidx.lifecycle.repeatOnLifecycle
+import kotlinx.coroutines.launch
 import ru.otus.coroutineshomework.databinding.ContentBinding
 import ru.otus.coroutineshomework.databinding.FragmentLoginBinding
 import ru.otus.coroutineshomework.databinding.LoadingBinding
@@ -42,16 +47,20 @@ class LoginFragment : Fragment() {
 
         setupLogin()
         setupContent()
-
-        loginViewModel.state.observe(viewLifecycleOwner) {
-            when(it) {
-                is LoginViewState.Login -> showLogin(it)
-                LoginViewState.LoggingIn -> showLoggingIn()
-                is LoginViewState.Content -> showContent(it)
-                LoginViewState.LoggingOut -> showLoggingOut()
+        lifecycleScope.launch {
+            viewLifecycleOwner.repeatOnLifecycle(Lifecycle.State.STARTED) {
+                loginViewModel.state.collect {
+                    when (it) {
+                        is LoginViewState.Login -> showLogin(it)
+                        LoginViewState.LoggingIn -> showLoggingIn()
+                        is LoginViewState.Content -> showContent(it)
+                        LoginViewState.LoggingOut -> showLoggingOut()
+                    }
+                }
             }
         }
     }
+    
 
     private fun setupLogin() {
         login.loginButton.setOnClickListener {
