@@ -15,6 +15,9 @@ import java.util.Locale
 import kotlin.properties.Delegates
 import kotlin.time.Duration
 import kotlin.time.Duration.Companion.milliseconds
+import kotlinx.coroutines.flow.MutableStateFlow
+import androidx.lifecycle.repeatOnLifecycle
+import androidx.lifecycle.Lifecycle
 
 class TimerFragment : Fragment() {
 
@@ -23,9 +26,7 @@ class TimerFragment : Fragment() {
 
     private var timerJob: Job? = null
 
-    private var time: Duration by Delegates.observable(Duration.ZERO) { _, _, newValue ->
-        binding.time.text = newValue.toDisplayString()
-    }
+    private var timeFlow = MutableStateFlow(Duration.ZERO)
 
     private var started by Delegates.observable(false) { _, _, newValue ->
         setButtonsState(newValue)
@@ -55,12 +56,18 @@ class TimerFragment : Fragment() {
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         super.onViewCreated(view, savedInstanceState)
         savedInstanceState?.let {
-            time = it.getLong(TIME).milliseconds
+            timeFlow.value = it.getLong(TIME).milliseconds
             started = it.getBoolean(STARTED)
         }
         setButtonsState(started)
         with(binding) {
-            time.text = this@TimerFragment.time.toDisplayString()
+            viewLifecycleOwner.lifecycleScope.launch {
+                repeatOnLifecycle(Lifecycle.State.STARTED) {
+                    timeFlow.collect { duration ->
+                        binding.time.text = duration.toDisplayString()
+                    }
+                }
+            }
             btnStart.setOnClickListener {
                 started = true
             }
@@ -72,7 +79,7 @@ class TimerFragment : Fragment() {
 
     override fun onSaveInstanceState(outState: Bundle) {
         super.onSaveInstanceState(outState)
-        outState.putLong(TIME, time.inWholeMilliseconds)
+        outState.putLong(TIME, timeFlow.value.inWholeMilliseconds)
         outState.putBoolean(STARTED, started)
     }
 
@@ -80,7 +87,7 @@ class TimerFragment : Fragment() {
         timerJob = viewLifecycleOwner.lifecycleScope.launch {
             while (isActive) {
                 delay(10)
-                time += 10.milliseconds
+                timeFlow.emit(timeFlow.value + 10.milliseconds)
             }
         }
     }
