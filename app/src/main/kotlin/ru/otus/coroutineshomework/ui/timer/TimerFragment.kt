@@ -21,6 +21,8 @@ class TimerFragment : Fragment() {
     private var _binding: FragmentTimerBinding? = null
     private val binding get() = _binding!!
 
+    private var timerJob: Job? = null
+
     private var time: Duration by Delegates.observable(Duration.ZERO) { _, _, newValue ->
         binding.time.text = newValue.toDisplayString()
     }
@@ -75,11 +77,16 @@ class TimerFragment : Fragment() {
     }
 
     private fun startTimer() {
-        // TODO: Start timer
+        timerJob = viewLifecycleOwner.lifecycleScope.launch {
+            while (isActive) {
+                delay(10)
+                time += 10.milliseconds
+            }
+        }
     }
 
     private fun stopTimer() {
-        // TODO: Stop timer
+        timerJob?.cancel()
     }
 
     override fun onDestroyView() {
@@ -96,7 +103,7 @@ class TimerFragment : Fragment() {
             "%02d:%02d.%03d",
             this.inWholeMinutes.toInt(),
             this.inWholeSeconds.toInt(),
-            this.inWholeMilliseconds.toInt()
+            this.inWholeMilliseconds.toInt() - this.inWholeSeconds.toInt() * 1000
         )
     }
 }
