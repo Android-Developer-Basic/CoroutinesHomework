@@ -6,9 +6,9 @@ import android.view.View
 import android.view.ViewGroup
 import androidx.fragment.app.Fragment
 import androidx.lifecycle.lifecycleScope
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
-import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
 import ru.otus.coroutineshomework.databinding.FragmentTimerBinding
 import java.util.Locale
@@ -34,6 +34,7 @@ class TimerFragment : Fragment() {
         }
     }
 
+    private var job: Job? = null
     private fun setButtonsState(started: Boolean) {
         with(binding) {
             btnStart.isEnabled = !started
@@ -75,11 +76,26 @@ class TimerFragment : Fragment() {
     }
 
     private fun startTimer() {
-        // TODO: Start timer
+        resetTimer()
+
+        job = viewLifecycleOwner.lifecycleScope.launch(Dispatchers.Main) {
+            while (started) {
+                time += 100.milliseconds
+                delay(100.milliseconds)
+            }
+        }
     }
 
     private fun stopTimer() {
-        // TODO: Stop timer
+        job?.cancel()
+    }
+
+    private fun resetTimer() {
+        if (job != null) {
+            job?.cancel()
+        }
+
+        time = 0.milliseconds
     }
 
     override fun onDestroyView() {
