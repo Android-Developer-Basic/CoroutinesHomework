@@ -118,12 +118,16 @@ class TimerFragment : Fragment() {
         private const val TIME = "time"
         private const val STARTED = "started"
 
-        private fun Duration.toDisplayString(): String = String.format(
-            Locale.getDefault(),
-            "%02d:%02d.%03d",
-            this.inWholeMinutes.toInt(),
-            this.inWholeSeconds.toInt(),
-            this.inWholeMilliseconds.toInt()
-        )
+        private fun Duration.toDisplayString(): String {
+            val minutes = this.inWholeMinutes.toInt()
+            val seconds = (this.inWholeSeconds % 60).toInt()
+            val millis = (this.inWholeMilliseconds % 1000).toInt()
+
+            return String.format(
+                Locale.getDefault(),
+                "%02d:%02d.%03d",
+                minutes, seconds, millis
+            )
+        }
     }
 }
