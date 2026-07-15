@@ -1,18 +1,34 @@
 package ru.otus.coroutineshomework.ui.login
 
-import androidx.lifecycle.LiveData
-import androidx.lifecycle.MutableLiveData
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.catch
+import kotlinx.coroutines.flow.flow
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import ru.otus.coroutineshomework.ui.login.data.Credentials
 
 class LoginViewModel : ViewModel() {
 
-    private val _state = MutableLiveData<LoginViewState>(LoginViewState.Login())
-    val state: LiveData<LoginViewState> = _state
+    private val stateFlow = MutableStateFlow<LoginViewState>(LoginViewState.Login())
+    val state: StateFlow<LoginViewState> = stateFlow.asStateFlow()
+
+    private fun loginFlow(name: String, password: String): Flow<LoginViewState> = flow {
+        emit(LoginViewState.LoggingIn)
+
+        val user = withContext(Dispatchers.IO) {
+            LoginApi().login(Credentials(name, password))
+        }
+
+        emit(LoginViewState.Content(user))
+    }.catch { e ->
+        emit(LoginViewState.Login(e as Exception?))
+    }
 
     /**
      * Login to the network
@@ -20,19 +36,9 @@ class LoginViewModel : ViewModel() {
      * @param password user password
      */
     fun login(name: String, password: String) {
-        _state.value = LoginViewState.LoggingIn
-
-        viewModelScope.launch(Dispatchers.IO) {
-            try {
-                val user = LoginApi().login(Credentials(name, password))
-                withContext(Dispatchers.Main) {
-                    _state.value = LoginViewState.Content(user)
-                }
-
-            } catch (e: Exception) {
-                withContext(Dispatchers.Main) {
-                    _state.value = LoginViewState.Login(e)
-                }
+        viewModelScope.launch {
+            loginFlow(name,password).collect { state ->
+                stateFlow.value = state
             }
         }
     }
@@ -40,14 +46,17 @@ class LoginViewModel : ViewModel() {
     /**
      * Logout from the network
      */
-    fun logout() {
-        _state.value = LoginViewState.LoggingOut
-
-        viewModelScope.launch(Dispatchers.IO) {
-            LoginApi().logout()
-            withContext(Dispatchers.Main) {
-                _state.value = LoginViewState.Login(null)
-            }
+    private fun logoutFlow(): Flow<LoginViewState> = flow {
+        emit( LoginViewState.LoggingOut)
+        withContext(Dispatchers.IO) {
+           LoginApi().logout()
+        }
+        emit(LoginViewState.Login(null))
+    }
+    fun logout() = viewModelScope.launch {
+        logoutFlow().collect { state ->
+            stateFlow.value = state
         }
     }
+
 }
