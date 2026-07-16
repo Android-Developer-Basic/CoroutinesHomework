@@ -5,10 +5,13 @@ import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
 import androidx.fragment.app.Fragment
+import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.lifecycleScope
+import androidx.lifecycle.repeatOnLifecycle
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
-import kotlinx.coroutines.isActive
+import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.launch
 import ru.otus.coroutineshomework.databinding.FragmentTimerBinding
 import java.util.Locale
@@ -18,12 +21,11 @@ import kotlin.time.Duration.Companion.milliseconds
 
 class TimerFragment : Fragment() {
 
+    private val timerIncrement = 10.milliseconds
     private var _binding: FragmentTimerBinding? = null
     private val binding get() = _binding!!
 
-    private var time: Duration by Delegates.observable(Duration.ZERO) { _, _, newValue ->
-        binding.time.text = newValue.toDisplayString()
-    }
+    private var timeFlow = MutableStateFlow<Duration>(0.milliseconds)
 
     private var started by Delegates.observable(false) { _, _, newValue ->
         setButtonsState(newValue)
@@ -34,6 +36,7 @@ class TimerFragment : Fragment() {
         }
     }
 
+    private var job: Job? = null
     private fun setButtonsState(started: Boolean) {
         with(binding) {
             btnStart.isEnabled = !started
@@ -53,12 +56,21 @@ class TimerFragment : Fragment() {
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         super.onViewCreated(view, savedInstanceState)
         savedInstanceState?.let {
-            time = it.getLong(TIME).milliseconds
+            val initialTime = it.getLong(TIME).milliseconds
+            timeFlow = MutableStateFlow<Duration>(initialTime)
             started = it.getBoolean(STARTED)
         }
         setButtonsState(started)
+
         with(binding) {
-            time.text = this@TimerFragment.time.toDisplayString()
+            viewLifecycleOwner.lifecycleScope.launch(Dispatchers.Main) {
+                repeatOnLifecycle(Lifecycle.State.STARTED) {
+                    timeFlow.collect {
+                        time.text = it.toDisplayString()
+                    }
+                }
+            }
+
             btnStart.setOnClickListener {
                 started = true
             }
@@ -70,16 +82,31 @@ class TimerFragment : Fragment() {
 
     override fun onSaveInstanceState(outState: Bundle) {
         super.onSaveInstanceState(outState)
-        outState.putLong(TIME, time.inWholeMilliseconds)
+        outState.putLong(TIME, timeFlow.value.inWholeMilliseconds)
         outState.putBoolean(STARTED, started)
     }
 
     private fun startTimer() {
-        // TODO: Start timer
+        resetTimer()
+
+        job = viewLifecycleOwner.lifecycleScope.launch(Dispatchers.Main) {
+            while (started) {
+                timeFlow.emit(timeFlow.value + timerIncrement)
+                delay(timerIncrement)
+            }
+        }
     }
 
     private fun stopTimer() {
-        // TODO: Stop timer
+        job?.cancel()
+    }
+
+    private fun resetTimer() {
+        if (job != null) {
+            job?.cancel()
+        }
+
+        timeFlow.value = 0.milliseconds
     }
 
     override fun onDestroyView() {
@@ -91,12 +118,16 @@ class TimerFragment : Fragment() {
         private const val TIME = "time"
         private const val STARTED = "started"
 
-        private fun Duration.toDisplayString(): String = String.format(
-            Locale.getDefault(),
-            "%02d:%02d.%03d",
-            this.inWholeMinutes.toInt(),
-            this.inWholeSeconds.toInt(),
-            this.inWholeMilliseconds.toInt()
-        )
+        private fun Duration.toDisplayString(): String {
+            val minutes = this.inWholeMinutes.toInt()
+            val seconds = (this.inWholeSeconds % 60).toInt()
+            val millis = (this.inWholeMilliseconds % 1000).toInt()
+
+            return String.format(
+                Locale.getDefault(),
+                "%02d:%02d.%03d",
+                minutes, seconds, millis
+            )
+        }
     }
 }
