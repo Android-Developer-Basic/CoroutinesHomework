@@ -21,6 +21,8 @@ class TimerFragment : Fragment() {
     private var _binding: FragmentTimerBinding? = null
     private val binding get() = _binding!!
 
+    private var timerJob: Job? = null
+
     private var time: Duration by Delegates.observable(Duration.ZERO) { _, _, newValue ->
         binding.time.text = newValue.toDisplayString()
     }
@@ -66,6 +68,9 @@ class TimerFragment : Fragment() {
                 started = false
             }
         }
+        if (started) {
+            startTimer()
+        }
     }
 
     override fun onSaveInstanceState(outState: Bundle) {
@@ -75,14 +80,23 @@ class TimerFragment : Fragment() {
     }
 
     private fun startTimer() {
-        // TODO: Start timer
+        if (timerJob?.isActive == true) return
+
+        timerJob = viewLifecycleOwner.lifecycleScope.launch {
+            while (isActive) {
+                delay(TIMER_INTERVAL.inWholeMilliseconds)
+                time += TIMER_INTERVAL
+            }
+        }
     }
 
     private fun stopTimer() {
-        // TODO: Stop timer
+        timerJob?.cancel()
+        timerJob = null
     }
 
     override fun onDestroyView() {
+        stopTimer()
         super.onDestroyView()
         _binding = null
     }
@@ -90,13 +104,14 @@ class TimerFragment : Fragment() {
     companion object {
         private const val TIME = "time"
         private const val STARTED = "started"
+        private val TIMER_INTERVAL = 10.milliseconds
 
         private fun Duration.toDisplayString(): String = String.format(
             Locale.getDefault(),
             "%02d:%02d.%03d",
             this.inWholeMinutes.toInt(),
-            this.inWholeSeconds.toInt(),
-            this.inWholeMilliseconds.toInt()
+            (this.inWholeSeconds % 60).toInt(),
+            (this.inWholeMilliseconds % 1_000).toInt()
         )
     }
 }
