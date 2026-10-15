@@ -7,6 +7,10 @@ import android.view.ViewGroup
 import androidx.core.view.isVisible
 import androidx.fragment.app.Fragment
 import androidx.fragment.app.viewModels
+import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.lifecycleScope
+import androidx.lifecycle.repeatOnLifecycle
+import kotlinx.coroutines.launch
 import ru.otus.coroutineshomework.databinding.ContentBinding
 import ru.otus.coroutineshomework.databinding.FragmentLoginBinding
 import ru.otus.coroutineshomework.databinding.LoadingBinding
@@ -17,9 +21,9 @@ class LoginFragment : Fragment() {
     private var _binding: FragmentLoginBinding? = null
     private val binding get() = _binding!!
 
-    private lateinit var login: LoginBinding
-    private lateinit var content: ContentBinding
-    private lateinit var loading: LoadingBinding
+    private val login: LoginBinding get() = binding.loginScreen
+    private val content: ContentBinding get() = binding.contentScreen
+    private val loading: LoadingBinding get() = binding.loadingScreen
 
     private val loginViewModel by viewModels<LoginViewModel>()
 
@@ -30,10 +34,6 @@ class LoginFragment : Fragment() {
     ): View {
         _binding = FragmentLoginBinding.inflate(inflater, container, false)
 
-        login = binding.loginScreen
-        content = binding.contentScreen
-        loading = binding.loadingScreen
-
         return binding.root
     }
 
@@ -43,22 +43,26 @@ class LoginFragment : Fragment() {
         setupLogin()
         setupContent()
 
-        loginViewModel.state.observe(viewLifecycleOwner) {
-            when(it) {
-                is LoginViewState.Login -> showLogin(it)
-                LoginViewState.LoggingIn -> showLoggingIn()
-                is LoginViewState.Content -> showContent(it)
-                LoginViewState.LoggingOut -> showLoggingOut()
+        viewLifecycleOwner.lifecycleScope.launch {
+            viewLifecycleOwner.repeatOnLifecycle(Lifecycle.State.STARTED) {
+                loginViewModel.state.collect {
+                    when (it) {
+                        is LoginViewState.Login -> showLogin(it)
+                        LoginViewState.LoggingIn -> showLoggingIn()
+                        is LoginViewState.Content -> showContent(it)
+                        LoginViewState.LoggingOut -> showLoggingOut()
+                    }
+                }
             }
         }
     }
 
     private fun setupLogin() {
         login.loginButton.setOnClickListener {
-            val name = login.login.text?.trim() ?: ""
-            val password = login.password.text?.trim() ?: ""
+            val name = login.login.text?.toString()?.trim().orEmpty()
+            val password = login.password.text?.toString().orEmpty()
 
-            loginViewModel.login(name.toString(), password.toString())
+            loginViewModel.login(name, password)
         }
     }
 
@@ -93,6 +97,7 @@ class LoginFragment : Fragment() {
 
         content.contentGroup.isVisible = true
         content.name.text = data.user.name
+        loading.loadingGroup.isVisible = false
     }
 
     private fun showLoggingOut() {
